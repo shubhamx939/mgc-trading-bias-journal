@@ -8,7 +8,8 @@ export function useJournal() {
   useEffect(() => {
     let failed = false
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(journal))
+      if (Object.keys(journal).length) localStorage.setItem(STORAGE_KEY, JSON.stringify(journal))
+      else localStorage.removeItem(STORAGE_KEY)
     } catch {
       failed = true
     }

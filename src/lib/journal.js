@@ -2,6 +2,8 @@ export const HTF = ['12M', '6M', '3M', '1M', '1W', '1D']
 export const LTF = ['4H', '1H']
 export const BIASES = ['bullish', 'bearish', 'neutral']
 export const STORAGE_KEY = 'mgc-bias-journal:v1'
+export const SOUND_KEY = 'mgc-sound-enabled'
+export const REVIEW_PREFIX = 'mgc-review-seen:'
 
 export function dateKey(date = new Date()) {
   const year = date.getFullYear()
@@ -39,6 +41,16 @@ export function loadJournal() {
   }
 }
 
+export function eraseLocalData(storage) {
+  const keys = []
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index)
+    if (key === STORAGE_KEY || key === SOUND_KEY || key?.startsWith(REVIEW_PREFIX)) keys.push(key)
+  }
+  keys.forEach((key) => storage.removeItem(key))
+  return keys.length
+}
+
 function commitDay(state, date, day) {
   const htf = Object.fromEntries(Object.entries(day.htf || {}).filter(([, entry]) => entry.morning || entry.actual))
   const ltf = Object.fromEntries(Object.entries(day.ltf || {}).filter(([, entry]) => entry.bias || entry.actual))
@@ -51,6 +63,7 @@ function commitDay(state, date, day) {
 }
 
 export function journalReducer(state, action) {
+  if (action.type === 'RESET') return {}
   if (action.type === 'SET_HTF') {
     const { date, timeframe, phase, bias } = action
     if (!HTF.includes(timeframe) || !['morning', 'actual'].includes(phase) || (bias !== null && !BIASES.includes(bias))) return state

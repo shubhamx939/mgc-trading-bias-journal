@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { Activity, ArrowRight, ArrowUpRight, Bell, BellOff, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Download, History, LayoutDashboard, Menu, Target, Volume2, VolumeX, X } from 'lucide-react'
+import { Activity, ArrowRight, ArrowUpRight, Bell, BellOff, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Download, History, LayoutDashboard, Menu, Target, Trash2, Volume2, VolumeX, X } from 'lucide-react'
 import { useJournal } from './hooks/useJournal'
-import { allEntries, BIASES, dateKey, exportCsv, hasEntries, HTF, htfEntries, ltfEntries, previousDateKey, scoreEntries, slotHour, slotKey, slotLabel } from './lib/journal'
+import { allEntries, BIASES, dateKey, eraseLocalData, exportCsv, hasEntries, HTF, htfEntries, ltfEntries, previousDateKey, REVIEW_PREFIX, scoreEntries, slotHour, slotKey, slotLabel, SOUND_KEY } from './lib/journal'
 import { notifyCandle, playChime } from './lib/alerts'
 import './index.css'
 
@@ -65,6 +65,30 @@ function ReviewModal({ date, day, onClose }) {
   </div>
 }
 
+function EraseModal({ onClose, onErase, onExport, error }) {
+  const [confirmation, setConfirmation] = useState('')
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section className="review-modal erase-modal" role="dialog" aria-modal="true" aria-labelledby="erase-title">
+      <button className="icon-button modal-close" onClick={onClose} aria-label="Close erase dialog"><X size={19} /></button>
+      <div className="erase-icon"><Trash2 size={22} /></div>
+      <h2 id="erase-title">Erase all journal data?</h2>
+      <p className="modal-subtitle">This permanently removes your HTF and intraday entries, review history, and sound setting from this browser. It cannot be undone.</p>
+      <button type="button" className="backup-link" onClick={onExport}><Download size={15} /> Download a CSV backup first</button>
+      <form onSubmit={(event) => { event.preventDefault(); if (confirmation === 'ERASE') onErase() }}>
+        <label className="erase-label" htmlFor="erase-confirmation">Type <strong>ERASE</strong> to confirm</label>
+        <input id="erase-confirmation" className="erase-input" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" spellCheck={false} />
+        {error && <p className="erase-error" role="alert">{error}</p>}
+        <div className="erase-actions"><button type="button" className="outline-button" onClick={onClose}>Cancel</button><button type="submit" className="danger-button" disabled={confirmation !== 'ERASE'}><Trash2 size={15} /> Erase data</button></div>
+      </form>
+    </section>
+  </div>
+}
+
 function JournalView({ date, setDate, today, day, dispatch, now }) {
   const [ltfTab, setLtfTab] = useState('1H')
   const htfScore = scoreEntries(htfEntries(day))
@@ -108,9 +132,9 @@ function AnalyticsView({ journal }) {
   </div>
 }
 
-function HistoryView({ journal, onOpen, onExport }) {
+function HistoryView({ journal, onOpen, onExport, onErase }) {
   const dates = Object.keys(journal).filter((date) => hasEntries(journal[date])).sort().reverse()
-  return <div className="page-stack"><div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-line" /> YOUR TRACK RECORD</div><h1>Historical Logs<span className="gold-dot">.</span></h1><p>Revisit each session and see how your read evolved.</p></div><button className="outline-button" onClick={onExport}><Download size={16} /> Export CSV</button></div><section className="panel"><div className="section-head"><div><div className="section-kicker">JOURNAL ARCHIVE</div><h2>All sessions</h2><p>{dates.length} {dates.length === 1 ? 'day' : 'days'} recorded in this browser</p></div></div>{dates.length ? <div className="history-list">{dates.map((date) => { const day = journal[date]; const score = scoreEntries([...htfEntries(day), ...ltfEntries(day)]); const htfCount = htfEntries(day).filter((entry) => entry.bias || entry.actual).length; const ltfCount = ltfEntries(day).length; return <button className="history-row" key={date} onClick={() => onOpen(date)}><span className="history-calendar"><CalendarDays size={19} /></span><span className="history-main"><strong>{formatDate(date)}</strong><small>{htfCount} HTF entries · {ltfCount} intraday candles</small></span><span className={`history-accuracy ${score.percent === null ? 'no-score' : ''}`}>{score.percent === null ? 'No score' : `${score.percent}% accuracy`}</span><ChevronRight size={18} className="history-chevron" /></button> })}</div> : <div className="empty-chart"><History size={28} /><strong>No sessions yet</strong><span>Your logged days will appear here automatically.</span></div>}</section></div>
+  return <div className="page-stack"><div className="page-heading"><div><div className="eyebrow"><span className="eyebrow-line" /> YOUR TRACK RECORD</div><h1>Historical Logs<span className="gold-dot">.</span></h1><p>Revisit each session and see how your read evolved.</p></div><div className="history-actions"><button className="outline-button" onClick={onExport}><Download size={16} /> Export CSV</button><button className="outline-button danger-outline" onClick={onErase}><Trash2 size={16} /> Erase data</button></div></div><section className="panel"><div className="section-head"><div><div className="section-kicker">JOURNAL ARCHIVE</div><h2>All sessions</h2><p>{dates.length} {dates.length === 1 ? 'day' : 'days'} recorded in this browser</p></div></div>{dates.length ? <div className="history-list">{dates.map((date) => { const day = journal[date]; const score = scoreEntries([...htfEntries(day), ...ltfEntries(day)]); const htfCount = htfEntries(day).filter((entry) => entry.bias || entry.actual).length; const ltfCount = ltfEntries(day).length; return <button className="history-row" key={date} onClick={() => onOpen(date)}><span className="history-calendar"><CalendarDays size={19} /></span><span className="history-main"><strong>{formatDate(date)}</strong><small>{htfCount} HTF entries · {ltfCount} intraday candles</small></span><span className={`history-accuracy ${score.percent === null ? 'no-score' : ''}`}>{score.percent === null ? 'No score' : `${score.percent}% accuracy`}</span><ChevronRight size={18} className="history-chevron" /></button> })}</div> : <div className="empty-chart"><History size={28} /><strong>No sessions yet</strong><span>Your logged days will appear here automatically.</span></div>}</section></div>
 }
 
 export default function App() {
@@ -120,15 +144,17 @@ export default function App() {
   const [date, setDate] = useState(today)
   const [view, setView] = useState('journal')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('mgc-sound-enabled') === 'true')
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem(SOUND_KEY) === 'true')
   const [alertsEnabled, setAlertsEnabled] = useState(() => 'Notification' in window && Notification.permission === 'granted')
   const [alertBanner, setAlertBanner] = useState('')
   const [dismissedReview, setDismissedReview] = useState(null)
+  const [eraseOpen, setEraseOpen] = useState(false)
+  const [eraseError, setEraseError] = useState('')
   const lastHour = useRef(`${today}-${now.getHours()}`)
   const previous = previousDateKey(now)
-  const reviewDate = journal[previous] && htfEntries(journal[previous]).some((entry) => entry.bias || entry.actual) && dismissedReview !== previous && !localStorage.getItem(`mgc-review-seen:${today}`) ? previous : null
+  const reviewDate = journal[previous] && htfEntries(journal[previous]).some((entry) => entry.bias || entry.actual) && dismissedReview !== previous && !localStorage.getItem(`${REVIEW_PREFIX}${today}`) ? previous : null
 
-  useEffect(() => { localStorage.setItem('mgc-sound-enabled', String(soundEnabled)) }, [soundEnabled])
+  useEffect(() => { if (soundEnabled) localStorage.setItem(SOUND_KEY, 'true'); else localStorage.removeItem(SOUND_KEY) }, [soundEnabled])
   useEffect(() => {
     const tick = () => {
       const current = new Date()
@@ -148,7 +174,7 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [soundEnabled])
   function closeReview() {
-    localStorage.setItem(`mgc-review-seen:${today}`, 'true')
+    localStorage.setItem(`${REVIEW_PREFIX}${today}`, 'true')
     setDismissedReview(previous)
   }
   async function enableNotifications() {
@@ -170,10 +196,26 @@ export default function App() {
     anchor.click()
     URL.revokeObjectURL(url)
   }
+  function eraseAllData() {
+    try {
+      eraseLocalData(localStorage)
+    } catch {
+      setEraseError('Your browser could not erase the saved data. Check your site storage settings and try again.')
+      return
+    }
+    dispatch({ type: 'RESET' })
+    setSoundEnabled(false)
+    setDismissedReview(null)
+    setEraseOpen(false)
+    setEraseError('')
+    setDate(today)
+    switchView('journal')
+    setAlertBanner('Journal data erased from this browser.')
+  }
   function switchView(next) { setView(next); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
   return <div className="app-shell"><aside className={`sidebar ${menuOpen ? 'open' : ''}`}><div className="brand"><div className="brand-mark"><span>Au</span></div><div><strong>AUREUM</strong><small>TRADING JOURNAL</small></div></div><div className="sidebar-group-label">WORKSPACE</div><nav aria-label="Main navigation">{NAV.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${view === id ? 'active' : ''}`} onClick={() => switchView(id)}><Icon size={18} /><span>{label}</span>{view === id && <span className="nav-indicator" />}</button>)}</nav><div className="sidebar-bottom"><div className="sidebar-market"><span className="live-dot" /><div><strong>MGC / MICRO GOLD</strong><small>Personal bias tracker</small></div></div><div className="sidebar-foot">Built for clearer market reads <span>✦</span></div></div></aside>
     <div className="main-area"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMenuOpen((value) => !value)} aria-label="Toggle menu"><Menu size={20} /></button><div className="breadcrumb"><span>WORKSPACE</span><ChevronRight size={14} /><strong>{NAV.find((item) => item.id === view)?.label}</strong></div><div className="top-actions"><span className="local-time"><Clock3 size={15} /> {new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(now)} LOCAL</span><button className={`icon-button top-action ${soundEnabled ? 'enabled' : ''}`} onClick={toggleSound} title={soundEnabled ? 'Disable chime' : 'Enable chime'} aria-label={soundEnabled ? 'Disable chime' : 'Enable chime'}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button><button className={`icon-button top-action ${alertsEnabled ? 'enabled' : ''}`} onClick={enableNotifications} title="Enable browser notifications" aria-label="Enable browser notifications">{alertsEnabled ? <Bell size={18} /> : <BellOff size={18} />}</button><div className="avatar">MG</div></div></header>
-      <main className="content">{saveError && <div className="status-banner error">Your browser could not save the journal. Export your data before closing this tab.</div>}{alertBanner && <div className="status-banner"><Bell size={16} /><span>{alertBanner}</span><button onClick={() => setAlertBanner('')} aria-label="Dismiss alert"><X size={16} /></button></div>}{view === 'journal' ? <JournalView date={date} setDate={setDate} today={today} day={journal[date] || {}} dispatch={dispatch} now={now} /> : view === 'analytics' ? <AnalyticsView journal={journal} /> : <HistoryView journal={journal} onOpen={(selected) => { setDate(selected); switchView('journal') }} onExport={downloadCsv} />}</main>
-    </div>{menuOpen && <button className="mobile-overlay" onClick={() => setMenuOpen(false)} aria-label="Close menu" />}{reviewDate && <ReviewModal date={reviewDate} day={journal[reviewDate]} onClose={closeReview} />}</div>
+      <main className="content">{saveError && <div className="status-banner error">Your browser could not save the journal. Export your data before closing this tab.</div>}{alertBanner && <div className="status-banner"><Bell size={16} /><span>{alertBanner}</span><button onClick={() => setAlertBanner('')} aria-label="Dismiss alert"><X size={16} /></button></div>}{view === 'journal' ? <JournalView date={date} setDate={setDate} today={today} day={journal[date] || {}} dispatch={dispatch} now={now} /> : view === 'analytics' ? <AnalyticsView journal={journal} /> : <HistoryView journal={journal} onOpen={(selected) => { setDate(selected); switchView('journal') }} onExport={downloadCsv} onErase={() => { setEraseError(''); setEraseOpen(true) }} />}</main>
+    </div>{menuOpen && <button className="mobile-overlay" onClick={() => setMenuOpen(false)} aria-label="Close menu" />}{reviewDate && <ReviewModal date={reviewDate} day={journal[reviewDate]} onClose={closeReview} />}{eraseOpen && <EraseModal onClose={() => setEraseOpen(false)} onErase={eraseAllData} onExport={downloadCsv} error={eraseError} />}</div>
 }

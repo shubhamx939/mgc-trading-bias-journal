@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { exportCsv, htfEntries, journalReducer, ltfEntries, scoreEntries, slotKey } from './journal.js'
+import { eraseLocalData, exportCsv, htfEntries, journalReducer, ltfEntries, scoreEntries, slotKey } from './journal.js'
 
 test('morning and EOD choices remain separate and score completed pairs only', () => {
   let journal = {}
@@ -33,4 +33,21 @@ test('CSV export includes completed and pending entries with explicit candle tim
   const csv = exportCsv(journal)
   assert.match(csv, /"2026-10-04","HTF","1D","","bullish","bullish","true"/)
   assert.match(csv, /"2026-10-04","LTF","1H","09:00","bearish","",""/)
+})
+
+test('erase removes only MGC data and reset clears in-memory journal', () => {
+  const values = new Map([
+    ['mgc-bias-journal:v1', '{"2026-10-04":{}}'],
+    ['mgc-review-seen:2026-10-05', 'true'],
+    ['mgc-sound-enabled', 'true'],
+    ['another-app-key', 'keep'],
+  ])
+  const storage = {
+    get length() { return values.size },
+    key(index) { return [...values.keys()][index] ?? null },
+    removeItem(key) { values.delete(key) },
+  }
+  assert.equal(eraseLocalData(storage), 3)
+  assert.deepEqual([...values.entries()], [['another-app-key', 'keep']])
+  assert.deepEqual(journalReducer({ '2026-10-04': { htf: {}, ltf: {} } }, { type: 'RESET' }), {})
 })
