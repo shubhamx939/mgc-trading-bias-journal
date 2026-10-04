@@ -35,6 +35,13 @@ test('CSV export includes completed and pending entries with explicit candle tim
   assert.match(csv, /"2026-10-04","LTF","1H","09:00","bearish","",""/)
 })
 
+test('IST candle keys and CSV labels persist the half-hour start', () => {
+  const slot = { key: '1H-0930', label: '09:30–10:30', start: 570 }
+  const journal = journalReducer({}, { type: 'SET_LTF', date: '2026-10-05', timeframe: '1H', slot, phase: 'bias', bias: 'bullish' })
+  assert.equal(journal['2026-10-05'].ltf['1H-0930'].candleStart, '09:30')
+  assert.match(exportCsv(journal), /"2026-10-05","LTF","1H","09:30","bullish"/)
+})
+
 test('erase removes only MGC data and reset clears in-memory journal', () => {
   const values = new Map([
     ['mgc-bias-journal:v1', '{"2026-10-04":{}}'],

@@ -8,3 +8,33 @@
 @media(max-width:480px){.htf-row:not(.htf-labels){grid-template-columns:1fr}.htf-row .timeframe-cell,.htf-row .outcome{grid-column:1}.htf-row .bias-buttons{grid-column:1}.bias-button{min-height:33px}}
 .history-actions{display:flex;gap:9px;align-items:center}.danger-outline{color:#eea39b;border-color:#704744;background:#2c2022}.danger-outline:hover{border-color:#d47c73;background:#3a2628}.erase-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:9px;background:#4b2a2c;border:1px solid #855153;color:#f0aaa2}.erase-modal .modal-subtitle{line-height:1.55;max-width:440px}.backup-link{display:inline-flex;align-items:center;gap:7px;margin:20px 0 17px;padding:0;border:0;background:transparent;color:#e5b976;font-size:11px;font-weight:800}.backup-link:hover{text-decoration:underline}.erase-label{display:block;color:#a9b5b4;font-size:11px;margin-bottom:8px}.erase-label strong{color:#f4b2a8;letter-spacing:.09em}.erase-input{width:100%;height:40px;border-radius:6px;border:1px solid #526066;background:#10191e;color:#f5f4ef;padding:0 11px;font:inherit;font-size:13px;outline:none}.erase-input:focus{border-color:#e7a69d;box-shadow:0 0 0 2px #e7a69d22}.erase-error{color:#f1aaa1;font-size:11px;margin:8px 0 0}.erase-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.danger-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e69086;border-radius:7px;background:#bf5951;color:white;padding:10px 14px;font-size:11px;font-weight:800}.danger-button:hover:not(:disabled){background:#d56d63}.danger-button:disabled{opacity:.42;cursor:not-allowed}
 @media(max-width:600px){.history-actions{width:100%;flex-wrap:wrap}.history-actions button{flex:1;white-space:nowrap}.erase-actions button{flex:1}}
+/* Keep the two working lenses visible together on desktop. */
+@media (min-width: 1050px) {
+  .journal-panels,.analytics-panels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+  .journal-panels>.panel,.analytics-panels>.panel{min-width:0}
+  .journal-panels .section-head,.analytics-panels .section-head{padding:19px 19px 17px}
+  .journal-panels .section-head p,.analytics-panels .section-head p{font-size:10px}
+  .journal-panels .section-badge{display:none}
+  .journal-panels .htf-table{min-width:0}
+  .journal-panels .htf-row{grid-template-columns:72px minmax(0,1fr) minmax(0,1fr) 45px;gap:6px;padding:8px 12px;min-height:62px}
+  .journal-panels .htf-labels{font-size:8px;letter-spacing:.04em}
+  .journal-panels .htf-labels small,.journal-panels .timeframe-cell small,.journal-panels .bias-word{display:none}
+  .journal-panels .bias-buttons{gap:3px}
+  .journal-panels .bias-button{min-width:26px;flex:1;padding:0 3px}
+  .journal-panels .timeframe-cell{gap:5px}
+  .journal-panels .tf-icon{width:26px;height:26px;flex:none}
+  .journal-panels .outcome{font-size:9px;gap:2px}
+  .journal-panels .outcome svg{width:12px}
+  .journal-panels .timeline-summary{padding:0 16px}
+  .journal-panels .timeline-list{max-height:415px}
+  .journal-panels .timeline-row{grid-template-columns:minmax(105px,1.1fr) minmax(81px,1fr) minmax(81px,1fr) 32px;gap:5px;padding:7px 12px;min-height:67px}
+  .journal-panels .timeline-time{font-size:10px;gap:5px}
+  .journal-panels .timeline-input{min-width:0;flex-direction:column;align-items:stretch;gap:2px}
+  .journal-panels .field-label{display:block;font-size:7px}
+  .journal-panels .timeline-result{font-size:9px}
+  .analytics-panels .breakdown-grid{gap:0 20px;padding:10px 19px 16px}
+  .analytics-panels .chart-panel .chart-wrap{height:345px}
+}
+@media (max-width: 1049px) {
+  .journal-panels,.analytics-panels{display:grid;gap:22px}
+}

@@ -4,18 +4,16 @@ export const BIASES = ['bullish', 'bearish', 'neutral']
 export const STORAGE_KEY = 'mgc-bias-journal:v1'
 export const SOUND_KEY = 'mgc-sound-enabled'
 export const REVIEW_PREFIX = 'mgc-review-seen:'
+import { chartDateKey } from './schedule.js'
 
 export function dateKey(date = new Date()) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return chartDateKey(date)
 }
 
 export function previousDateKey(date = new Date()) {
-  const prior = new Date(date)
-  prior.setDate(prior.getDate() - 1)
-  return dateKey(prior)
+  const prior = new Date(`${dateKey(date)}T12:00:00Z`)
+  prior.setUTCDate(prior.getUTCDate() - 1)
+  return prior.toISOString().slice(0, 10)
 }
 
 export function slotHour(timeframe, hour) {
@@ -71,11 +69,12 @@ export function journalReducer(state, action) {
     return commitDay(state, date, { ...day, htf: { ...day.htf, [timeframe]: { ...day.htf?.[timeframe], [phase]: bias } } })
   }
   if (action.type === 'SET_LTF') {
-    const { date, timeframe, hour, phase, bias } = action
-    if (!LTF.includes(timeframe) || !Number.isInteger(hour) || hour < 0 || hour > 23 || !['bias', 'actual'].includes(phase) || (bias !== null && !BIASES.includes(bias))) return state
+    const { date, timeframe, hour, slot, phase, bias } = action
+    if (!LTF.includes(timeframe) || (!slot && (!Number.isInteger(hour) || hour < 0 || hour > 23)) || (slot && (!new RegExp(`^${timeframe}-\\d{4}$`).test(slot.key) || !Number.isInteger(slot.start) || slot.start < 0 || slot.start >= 1440)) || !['bias', 'actual'].includes(phase) || (bias !== null && !BIASES.includes(bias))) return state
     const day = state[date] || { htf: {}, ltf: {} }
-    const key = slotKey(timeframe, hour)
-    return commitDay(state, date, { ...day, ltf: { ...day.ltf, [key]: { ...day.ltf?.[key], timeframe, hour: slotHour(timeframe, hour), [phase]: bias } } })
+    const key = slot ? slot.key : slotKey(timeframe, hour)
+    const details = slot ? { timeframe, hour: Math.floor(slot.start / 60), candleStart: slot.label.slice(0, 5), label: slot.label } : { timeframe, hour: slotHour(timeframe, hour) }
+    return commitDay(state, date, { ...day, ltf: { ...day.ltf, [key]: { ...day.ltf?.[key], ...details, [phase]: bias } } })
   }
   return state
 }
@@ -114,7 +113,7 @@ export function exportCsv(journal) {
       rows.push([date, 'HTF', entry.timeframe, '', entry.bias, entry.actual, entry.bias && entry.actual ? entry.bias === entry.actual : ''])
     }
     for (const entry of ltfEntries(day).sort((a, b) => a.hour - b.hour)) {
-      rows.push([date, 'LTF', entry.timeframe, `${String(entry.hour).padStart(2, '0')}:00`, entry.bias, entry.actual, entry.bias && entry.actual ? entry.bias === entry.actual : ''])
+      rows.push([date, 'LTF', entry.timeframe, entry.candleStart || `${String(entry.hour).padStart(2, '0')}:00`, entry.bias, entry.actual, entry.bias && entry.actual ? entry.bias === entry.actual : ''])
     }
   }
   return rows.map((row) => row.map(escape).join(',')).join('\r\n')
